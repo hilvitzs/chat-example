@@ -1,42 +1,38 @@
-var app = require('express')();
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
+const express = require('express');
+const app = express();
+const http = require('http').Server(app);
+const io = require('socket.io')(http);
 
-app.get('/', function(req, res){
-  res.sendFile(__dirname + '/index.html');
+app.use(express.static('public'));
+
+app.get('/',  (req, res) => {
+  res.sendFile(path.join(__dirname, '/public/index.html'));
 });
 
+let clients = {}
 
-
-io.on('connection', function(socket){
-  console.log(Object.keys(io.engine.clients));
+io.on('connection', (socket) => {
   socket.broadcast.emit('login', 'a user connected');
   socket.broadcast.emit('users', `${io.engine.clients}`)
 
-  socket.on('disconnect', function(){
+  socket.on('disconnect', () => {
     socket.broadcast.emit('logout', 'user disconnected');
     socket.broadcast.emit('user count', `${io.engine.clientsCount}`);
   });
 
-  socket.on('chat message', function(msg){
-    socket.broadcast.emit('chat message', msg);
+  socket.on('chat message', (msg, name, id) => {
+    io.emit('chat message', msg, name, id);
+    clients[name] = id;
+    let clientKeys = Object.keys(clients);
+    io.emit('users online', clients);
+    console.log(clients);
+  
   });
 
-  socket.on('someone is typing', function(){
-    io.emit('someone is typing')
-  })
-
-
-
-  io.sockets.emit('user count', `${io.engine.clientsCount}`);
+  io.emit('user count', `${io.engine.clientsCount}`);
 });
 
 
-
-
-
-
-
-http.listen(3000, function(){
+http.listen(3000, () => {
   console.log('listening on *:3000');
 });
